@@ -51,7 +51,7 @@ lean_lib Initialization where
   globs := #[.andSubmodules `Initialization]
 
 lean_lib Main where
-  srcDir := "src/Main"
+  srcDir := "src"
   globs := #[.andSubmodules `Main]
 
 lean_lib NormalPolar where
@@ -109,3 +109,6 @@ lean_lib Upgrade where
 lean_lib UpgradeContinuation where
   srcDir := "src/Upgrade"
   globs := #[.andSubmodules `UpgradeContinuation]
+
+@[default_target]
+lean_lib MainTheorem
