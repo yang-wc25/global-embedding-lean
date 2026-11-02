@@ -1,0 +1,220 @@
+import Repair.IncrementUniformSecondaryPacket
+import Probes.Round4ParameterNamedMetaReferenceConsumer
+import Smoothing.Round4LocalPrimaryStageConsumer
+import Probes.Round4ParameterSecondaryActualFactory
+import Probes.Round3ParameterActualSecondaryFactory
+import Smoothing.Round4LocalPrimaryReferenceConsumer
+import Smoothing.Round3ParameterActualStageRawConsumer
+import Smoothing.Round3OuterStageDataProfiles
+import Smoothing.Round3OuterActualParameterCanonicalMean
+
+/-!
+# The full actual coherent stage uses one uniform secondary cost
+
+This adapts the original stage-consumer proof at its actual factory call.
+The existing physical secondary family is constructed with the common
+numerical profile as `Mnew`. Its raw solver witnesses, source domains,
+cutoffs, native charts and original mixed-jet norms are retained. The
+original finite-maximum profile is bounded internally; it is not exposed
+as a new reference-dependent primitive.
+-/
+
+noncomputable section
+set_option backward.isDefEq.respectTransparency false
+open GlobalEmbedding.Paper GlobalEmbedding.Offline Set Function Manifold IsManifold
+open scoped ContDiff Topology Classical ENNReal TensorProduct
+namespace GlobalEmbedding.Continuation
+variable {m d N : ℕ} {M P : Type*} [TopologicalSpace M] [TopologicalSpace P]
+  [ChartedSpace (EuclideanSpace ℝ (Fin (m+1))) M]
+  [IsManifold 𝓘(ℝ,EuclideanSpace ℝ (Fin (m+1))) ∞ M]
+  [BoundarylessManifold 𝓘(ℝ,EuclideanSpace ℝ (Fin (m+1))) M]
+  [ChartedSpace (EuclideanSpace ℝ (Fin d)) P]
+  [IsManifold 𝓘(ℝ,EuclideanSpace ℝ (Fin d)) ∞ P]
+local notation "D" => EuclideanSpace ℝ (Fin (m+1))
+local notation "Ep" => EuclideanSpace ℝ (Fin d)
+local notation "Ey" => EuclideanSpace ℝ (Fin N)
+local notation "X" => Ep × D
+local notation "𝓙" => 𝓘(ℝ,D)
+local notation "Tdata" => EuclideanSpace ℝ {p : Fin m × Fin m // Prod.fst p ≤ Prod.snd p}
+
+open SymmetricSquareNorms
+attribute [local instance] squareSemi squareTopology squareAddMonoid squareNS squareModule
+
+private local instance outerStableMeanSquareRelationsClosed {E : Type*}
+    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] :
+    IsClosed (symmetricSquareRelations E : Set (E ⊗[ℝ] E)) :=
+  Submodule.closed_of_finiteDimensional _
+
+private noncomputable local instance outerStableMeanSquareNormed {E : Type*}
+    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] :
+    NormedAddCommGroup (SymmetricSquare E) :=
+  Submodule.Quotient.normedAddCommGroup (symmetricSquareRelations E)
+
+private local instance outerStableMeanGeometryFirstNormed : NormedAddCommGroup (D →L[ℝ] Ey) := inferInstance
+private local instance outerStableMeanGeometryFirstSpace : NormedSpace ℝ (D →L[ℝ] Ey) := inferInstance
+private local instance outerStableMeanGeometryHessianNormed : NormedAddCommGroup (D →L[ℝ] D →L[ℝ] Ey) := inferInstance
+private local instance outerStableMeanGeometryHessianSpace : NormedSpace ℝ (D →L[ℝ] D →L[ℝ] Ey) := inferInstance
+private local instance outerStableMeanGeometryFrameNormed : NormedAddCommGroup (Tdata →L[ℝ] Ey) := inferInstance
+private local instance outerStableMeanGeometryFrameSpace : NormedSpace ℝ (Tdata →L[ℝ] Ey) := inferInstance
+private local instance outerStableMeanGeometryT0Normed : NormedAddCommGroup (D →L[ℝ] Tdata) := inferInstance
+private local instance outerStableMeanGeometryT0Space : NormedSpace ℝ (D →L[ℝ] Tdata) := inferInstance
+private local instance outerStableMeanCdataNormed : NormedAddCommGroup (Fin (m+1) → ℂ) := inferInstance
+private local instance outerStableMeanCdataSpace : NormedSpace ℝ (Fin (m+1) → ℂ) := inferInstance
+private local instance outerStableMeanCjetNormed : NormedAddCommGroup (D →L[ℝ] (Fin (m+1) → ℂ)) :=
+  ContinuousLinearMap.toNormedAddCommGroup
+private local instance outerStableMeanCjetSpace : NormedSpace ℝ (D →L[ℝ] (Fin (m+1) → ℂ)) :=
+  ContinuousLinearMap.toNormedSpace
+private local instance outerStableMeanCANormed : NormedAddCommGroup
+    ((D →L[ℝ] (Fin (m+1) → ℂ)) →L[ℝ] (Fin (m+1) → ℂ)) :=
+  ContinuousLinearMap.toNormedAddCommGroup
+private local instance outerStableMeanCASpace : NormedSpace ℝ
+    ((D →L[ℝ] (Fin (m+1) → ℂ)) →L[ℝ] (Fin (m+1) → ℂ)) :=
+  ContinuousLinearMap.toNormedSpace
+private local instance outerStableMeanCBNormed : NormedAddCommGroup
+    ((Fin (m+1) → ℂ) →L[ℝ] (Fin (m+1) → ℂ)) := ContinuousLinearMap.toNormedAddCommGroup
+private local instance outerStableMeanCBSpace : NormedSpace ℝ
+    ((Fin (m+1) → ℂ) →L[ℝ] (Fin (m+1) → ℂ)) := ContinuousLinearMap.toNormedSpace
+
+
+
+private local instance outerStableArgumentLinearNormed : NormedAddCommGroup ((Fin ((m+1)*(m+1)) → ℝ) →L[ℝ] ℝ) :=
+  ContinuousLinearMap.toNormedAddCommGroup
+private local instance outerStableArgumentLinearSpace : NormedSpace ℝ ((Fin ((m+1)*(m+1)) → ℝ) →L[ℝ] ℝ) :=
+  ContinuousLinearMap.toNormedSpace
+private local instance outerStableArgumentBilinearNormed : NormedAddCommGroup
+    ((Fin ((m+1)*(m+1)) → ℝ) →L[ℝ] (Fin ((m+1)*(m+1)) → ℝ) →L[ℝ] ℝ) :=
+  ContinuousLinearMap.toNormedAddCommGroup
+
+private local instance : ChartedSpace (Ep × D) (P × M) := prodChartedSpace Ep P D M
+private local instance : IsManifold 𝓘(ℝ,Ep × D) ∞ (P × M) := by
+  rw [modelWithCornersSelf_prod]
+  exact IsManifold.prod (I := 𝓘(ℝ,Ep)) (I' := 𝓙) (n := ∞) P M
+
+private local instance coherentSignedFinite (n : ℕ) : Fintype (ActualSecondarySignedRecord (Fin n)) := by
+  unfold ActualSecondarySignedRecord
+  infer_instance
+
+theorem increment_uniform_secondary_stage_raw_consumer
+    (Ref : IncrementsOriginalNativeData (m+1) d N M P)
+    (hdRef : IncrementsOriginalDomainConditions Ref) (hsRef : IncrementsOriginalSmoothInputs Ref)
+    (hnRef : IncrementsOriginalFreeNormalConditions Ref hdRef hsRef)
+    (hAll : Ref.parameterSet = univ) (hLinearRef : IncrementsOriginalLinearSmoothInputs Ref)
+    (theta : (Fin Ref.atlas.count × Fin Ref.parameterCount) → P × M → ℝ)
+    (packet : Round3ParameterWholePrimaryPieceSupply Ref theta)
+    (profiles : Round3ParameterWholeReferenceProfiles Ref hdRef hsRef theta packet)
+    (secondary : Round3PreparedParameterSecondaryPacket Ref hdRef hsRef theta)
+    (secondaryReserve : ℝ)
+    (hSecondaryReserve : ∀ r i a, (secondary.piece r i a).cT = secondaryReserve)
+    (hSupport : ∀ i, tsupport (theta i) ⊆ (Ref.parameterChart i.2).source ×ˢ (univ : Set M))
+    (hPart : ∀ z, ∑ i, theta i z = 1) (R Lprimary L : ℕ)
+    (hLocal : ∀ z, (Finset.univ.filter (fun nu => z ∈ tsupport (Ref.cutoff nu))).card ≤ Lprimary)
+    (hCount : ∀ z, (Finset.univ.filter (fun i => z ∈ tsupport (theta i))).card ≤ L)
+    (BS0 TS0 BP0 TP0 reference Given Cnormal ForwardC InverseC MetaC GeometryMeta Tinv Kcut Tobs : ℕ → ℝ)
+    (hBS0 : ∀ j, 0 ≤ BS0 j) (hTS0 : ∀ j, 0 ≤ TS0 j)
+    (hBP0 : ∀ j, 0 ≤ BP0 j) (hTP0 : ∀ j, 0 ≤ TP0 j)
+    (hInverseC : ∀ j, 0 ≤ InverseC j)
+    (Ds Dp : ℕ) (radius : ℝ) (hradius : 0 < radius) (q : ℕ) (budget lower : ℝ) :
+    let Cmap := fun j => round4PreparedPairConstant (m+1) d radius hradius BS0 TS0 BP0 TP0 Ds Dp j q
+    let Ctarget := Cmap
+    (∀ j, 0 ≤ Cmap j) ∧ (∀ j, 0 ≤ Ctarget j) ∧
+    ∃ Mrest Cut : ℕ → ℝ,
+      (∀ j, Mrest j = incrementUniformSecondaryGeometryProfile m d N q
+        (secondaryReserve/16)
+        (fun j => max (Cmap j*budget)
+          (max (Ctarget j*budget+(j+1)*reference j) (max (Given j) (Cnormal j))))
+        Tinv Tobs (lower/4) j) ∧
+      (∀ j, 0 ≤ Mrest j) ∧ (∀ j, Cut j=Kcut (actualSecondarySolveOrder q j)) ∧
+    let Packet := fun j => max (Cmap j*budget)
+      (max (Ctarget j*budget+(j+1)*reference j) (max (Given j) (Cnormal j)))
+    ∀ (F : P × M → Ey)
+      (H : (p : P) → (x : M) → LinearMap.BilinForm ℝ (TangentSpace 𝓙 x))
+      (neighborhood : (p : P) → (x : M) → Set {A : LinearMap.BilinForm ℝ (TangentSpace 𝓙 x) // A.IsSymm}),
+    let Data := round3ParameterStageData Ref F H Ref.parameterOpen Ref.freeNormal Ref.primaryDomain neighborhood
+    ∀ (stage : Round3RepairOriginalSmoothingStage Data BS0 TS0 BP0 TP0 Ds Dp
+      radius hradius q budget reference Given),
+    let hF := fun p => parameterRound2_native_source_slice_contMDiff
+      (round3_repair_stage_smoothed_map_contMDiff Data BS0 TS0 BP0 TP0
+        hBS0 hTS0 hBP0 hTP0 Ds Dp radius hradius q budget reference Given stage) p
+    ∀ normal : Fin Ref.primaryCount → P × M → Ey,
+    let g0 := round3ParameterWholePrimaryFamily Ref hdRef hsRef hnRef theta
+      (round3OuterReferencePrimaryPacket Ref hdRef hsRef theta packet profiles)
+    let domain := fun nu => round3FixedCarrierDomain (g0.eta nu)
+    ∀ (hNamed : Round3ParameterOriginalChartProfiles Ref g0 ForwardC InverseC MetaC)
+      (actual : Round3OuterParameterAdmissibleStageOutput Ref hdRef hsRef hnRef theta packet profiles
+      stage hF normal domain Cnormal ForwardC InverseC GeometryMeta R lower)
+      (rebound : Round3RepairNormalRebound stage normal domain Cnormal)
+      (stable : ∀ r i (a : secondary.s r i), Round3PreparedParameterStableSecondaryPiece Ref hdRef hsRef i r _
+        (secondary.piece r i a) (fun p x => F (p,x)) hF),
+    let E := round3RepairRebindNormalData Data normal domain
+    (∀ r i (a : secondary.s r i) observer,
+      ∃ out : Round3PreparedParameterRawPiece E rebound.domain_conditions rebound.smooth_inputs (i.1,observer) r
+        ((Ref.parameterChart observer).target ×ˢ (univ : Set M))
+        (fun v : Fin Ref.atlas.count => Ref.atlas.chart v)
+        (fun v => (parameterTensorModelEquiv (m+1) d) ⁻¹' incrementsOriginalEvaluation Ref.atlas Ref.parameterChart
+          Ref.sourceNormDomain Ref.parameterNormDomain Ref.parameterSet (v,observer)),
+      out.choice = ((round3PreparedParameterSecondaryChoice Ref hdRef hsRef i r _ (stable r i a).piece).pullback
+        (Ref.parameterChart observer)).toNative ∧
+      out.Tinv=Tinv ∧ out.Kcut=Kcut ∧ out.Tobs=Tobs ∧
+      out.cT=(secondary.piece r i a).cT/16 ∧ out.Bnative=1+Tobs 1) →
+    IncrementsOriginalQualitativeDecompositionInputs Data →
+    ∀ rho : ℝ, IncrementsOriginalDecompositionReserveInputs Data rho →
+    Round4LocalPrimaryCoherentConclusion Ref hdRef hsRef hnRef theta packet profiles secondary F H neighborhood
+      stage hF normal Cnormal ForwardC InverseC MetaC Packet Mrest Cut Tinv Tobs R Lprimary L lower rho := by
+  intro Cmap Ctarget
+  obtain ⟨hCmap,hCtarget,hCanonical⟩ :=
+    round4Parameter_named_meta_reference_canonical_consumer
+      (m := m) (d := d) (N := N) (M := M) (P := P)
+      BS0 TS0 BP0 TP0 reference Given Cnormal ForwardC InverseC MetaC GeometryMeta hBS0 hTS0 hBP0 hTP0 hInverseC
+      Ds Dp radius hradius q budget lower
+  let CmapS := Cmap
+  let CtargetS := Ctarget
+  obtain ⟨hCmapS,hCtargetS,hBudget⟩ :=
+    round4Parameter_actual_stage_data_named_profiles
+      (n := m+1) (d := d) (N := N) (M := M) (P := P)
+      BS0 TS0 BP0 TP0 hBS0 hTS0 hBP0 hTP0 Ds Dp radius hradius q
+  let InputBudget := fun j => max (CmapS j*budget)
+    (max (CtargetS j*budget+(j+1)*reference j) (max (Given j) (Cnormal j)))
+  obtain ⟨originalRest,Cut,hOriginalExact,hOriginalNonneg,hCut,hSecondary⟩ :=
+    round4Parameter_secondary_coherent_actual_factory
+      Ref hdRef hsRef hAll theta secondary hSupport hPart L hCount q (lower/4) InputBudget Tinv Kcut Tobs
+  let Mrest := incrementUniformSecondaryGeometryProfile m d N q (secondaryReserve/16)
+    InputBudget Tinv Tobs (lower/4)
+  have hMrestBound (j : ℕ) : originalRest j ≤ Mrest j := by
+    rw [hOriginalExact j]
+    apply increment_uniform_secondary_geometry_profile_bound
+    intro a
+    rw [hSecondaryReserve]
+  refine ⟨hCmap,hCtarget,Mrest,Cut,(fun j => rfl),
+    (fun j => incrementUniformSecondaryGeometryProfile_nonneg m d N q (secondaryReserve/16)
+      InputBudget Tinv Tobs (lower/4) j),hCut,?_⟩
+  intro Packet F H neighborhood Data stage hF normal g0 domain hNamed actual rebound stable E hRaw hDecomp rho hReserve
+  have canon := hCanonical Ref hdRef hsRef hnRef hAll hLinearRef theta packet profiles F H neighborhood
+    stage normal R Lprimary hLocal hNamed actual hDecomp rho hReserve
+  obtain ⟨rebound',hImm,hPhase,hEll,g,hEta,hForward,hInverse,hGeom,hProfiles,hSupply,hPhysical⟩ := canon
+  obtain ⟨Kt,hKt,hKtBound,hGiven⟩ := hBudget E budget reference
+    (fun j => max (Given j) (Cnormal j)) rebound'.stage
+  have hCoreFinite (j : ℕ) : incrementsOriginalCoreInputProfile E j stage.ell ≠ ⊤ := by
+    have hf : actualOriginalGivenInputProfile E j stage.ell ≠ ⊤ := by
+      rw [← rebound'.ell_eq]
+      exact (hGiven j).1
+    exact ne_top_of_le_ne_top hf (actualOriginalGivenInputProfile_core_le E j stage.ell)
+  have hCoreBound (j : ℕ) : (incrementsOriginalCoreInputProfile E j stage.ell).toReal ≤ InputBudget j := by
+    have hb : actualOriginalGivenInputProfile E j stage.ell ≠ ⊤ ∧
+        (actualOriginalGivenInputProfile E j stage.ell).toReal ≤ InputBudget j := by
+      rw [← rebound'.ell_eq]
+      exact hGiven j
+    exact (ENNReal.toReal_mono hb.1 (actualOriginalGivenInputProfile_core_le E j stage.ell)).trans hb.2
+  have hJoint : ContMDiff ((𝓘(ℝ,Ep)).prod 𝓙) 𝓘(ℝ,Ey) ∞ F := by
+    rw [← modelWithCornersSelf_prod]
+    exact round3_repair_stage_smoothed_map_contMDiff Data BS0 TS0 BP0 TP0 hBS0 hTS0 hBP0 hTP0
+      Ds Dp radius hradius q budget reference Given stage
+  have hSec := hSecondary Mrest hMrestBound (fun p x => F (p,x)) hF hJoint stable H Ref.parameterOpen
+    normal domain neighborhood rebound'.domain_conditions rebound'.smooth_inputs hRaw stage.ell stage.ell_pos
+    (stage.ell_le_t.trans stage.t_le_one) hEll hCoreFinite hCoreBound
+    (Round3ParameterWholePrimaryIndex Ref theta packet) (fun a => a.1.1)
+    (round3Parameter_restrictPrimaryFamily (fun p x => F (p,x)) g univ isOpen_univ)
+    (fun nu => congrFun hGeom.phase nu) (fun nu => congrFun hGeom.cutoff nu) hPhysical
+  exact ⟨rebound',hImm,hPhase,hEll,g,hEta,hForward,hInverse,hGeom,hProfiles,hSupply,hSec⟩
+
+end GlobalEmbedding.Continuation
+#print axioms GlobalEmbedding.Continuation.increment_uniform_secondary_stage_raw_consumer

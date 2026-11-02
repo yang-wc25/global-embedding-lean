@@ -1,0 +1,15 @@
+import GlobalEmbedding.Targets.FiniteParameterAvoidance
+import GlobalEmbedding.Targets.DerivativeBalancedCorrection
+import GlobalEmbedding.Targets.PlanarSelectors
+import GlobalEmbedding.Targets.OrthogonalPrimitives
+import GlobalEmbedding.Targets.FreeSelectors
+import GlobalEmbedding.Targets.AnalyticCollar
+import GlobalEmbedding.Targets.WholeProductSelectors
+import GlobalEmbedding.Targets.QuadraticSaturation
+import GlobalEmbedding.Targets.SupportedKernelNormalRank
+import GlobalEmbedding.Targets.ColoredApproximation
+import GlobalEmbedding.Targets.FinitePositiveIncrements
+import GlobalEmbedding.Targets.SmallExactImmersion
+import GlobalEmbedding.Targets.EmbeddingUpgrade
+import GlobalEmbedding.Targets.MainEmbedding
+import GlobalEmbedding.Targets.PairedProbes
