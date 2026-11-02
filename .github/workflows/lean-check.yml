@@ -1,0 +1,49 @@
+
+name: Lean Build and Verify
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    env:
+      LEAN_NUM_THREADS: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Lean and Mathlib
+        uses: leanprover/lean-action@v1
+        with:
+          auto-config: false
+          build: false
+          test: false
+          use-github-cache: false
+          use-mathlib-cache: true
+
+      - name: Restore build cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .lake/build
+          key: lean-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            lean-${{ runner.os }}-${{ github.sha }}-
+
+      - name: Compile and verify theorem
+        run: |
+          lake build --fail-fast
+          lake env lean MainTheorem.lean
+
+      - name: Save build cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .lake/build
+          key: lean-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
